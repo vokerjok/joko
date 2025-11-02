@@ -2,7 +2,7 @@ import WebSocket from "ws";
 import { spawn } from "child_process";
 import fs from "fs";
 
-const BRIDGE_URL = "ws://YOUR_BRIDGE_IP:8080"; // <--- ganti IP VPS bridge kamu
+const BRIDGE_URL = "ws://43.132.135.39:8080"; // <--- ganti IP VPS bridge kamu
 const CONFIG_PATH = "./config.json"; // pastikan file config.json sudah ada
 const MINER_BIN = "./joko"; // pastikan binary kamu build di folder yang sama
 
