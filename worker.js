@@ -1,34 +1,63 @@
-// --- worker.js ---
-// Worker yang terhubung ke bridge dan jalankan ./joko
 import WebSocket from "ws";
 import { spawn } from "child_process";
+import fs from "fs";
 
-const BRIDGE_URL = "ws://43.132.135.39:8080"; // Ganti dengan IP VPS bridge kamu
+const BRIDGE_URL = "ws://YOUR_BRIDGE_IP:8080"; // <--- ganti IP VPS bridge kamu
+const CONFIG_PATH = "./config.json"; // pastikan file config.json sudah ada
+const MINER_BIN = "./joko"; // pastikan binary kamu build di folder yang sama
 
-console.log("🔗 Connecting to bridge:", BRIDGE_URL);
+// Baca config lokal
+const config = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8"));
+
+// Koneksi ke bridge
 const ws = new WebSocket(BRIDGE_URL);
 
-ws.on("open", () => console.log("✅ Connected to bridge server"));
-ws.on("close", () => console.log("❌ Bridge connection closed, retrying..."));
-ws.on("error", e => console.error("⚠️ Bridge error:", e.message));
+ws.on("open", () => {
+  console.log("🔗 Connected to bridge", BRIDGE_URL);
+});
 
-ws.on("message", data => {
+ws.on("message", (data) => {
   try {
-    const msg = JSON.parse(data);
+    const msg = JSON.parse(data.toString());
     if (msg.type === "job") {
-      console.log("📦 Received new job from bridge:", msg.job.job_id);
-
-      // Jalankan miner binary dengan config.json (lokal)
-      const miner = spawn("./joko", ["-c", "config.json"], {
-        stdio: ["ignore", "pipe", "pipe"]
-      });
-
-      miner.stdout.on("data", d => process.stdout.write(`[joko] ${d}`));
-      miner.stderr.on("data", d => process.stderr.write(`[joko-err] ${d}`));
-
-      miner.on("close", code => console.log(`Miner stopped (${code})`));
+      console.log("📦 Received new job from bridge");
+      runMinerJob(msg.job);
     }
-  } catch (err) {
-    console.error("Parse error:", err.message);
+  } catch (e) {
+    console.error("Parse error:", e.message);
   }
 });
+
+ws.on("close", () => {
+  console.log("❌ Disconnected from bridge, retrying...");
+  setTimeout(() => connect(), 5000);
+});
+
+ws.on("error", (err) => {
+  console.error("⚠️ Bridge error:", err.message);
+});
+
+function runMinerJob(job) {
+  console.log("🚀 Starting miner for job...");
+
+  const miner = spawn(MINER_BIN, ["-c", CONFIG_PATH]);
+
+  miner.stdout.on("data", (data) => {
+    const out = data.toString().trim();
+    console.log("🧠", out);
+
+    // Kirim update ke bridge (opsional)
+    ws.send(JSON.stringify({
+      type: "result",
+      output: out
+    }));
+  });
+
+  miner.stderr.on("data", (data) => {
+    console.error("❗", data.toString());
+  });
+
+  miner.on("close", (code) => {
+    console.log(`💤 Miner exited with code ${code}`);
+  });
+}
