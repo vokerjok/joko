@@ -1,13 +1,13 @@
 {
-  "name": "worker",
+  "name": "joko-worker",
   "version": "1.0.0",
-  "description": "Joko miner worker connected to bridge",
+  "description": "Worker wrapper for ./joko miner — send stats to bridge.js",
   "type": "module",
   "main": "worker.js",
   "scripts": {
     "start": "node worker.js"
   },
   "dependencies": {
-    "ws": "^8.17.0"
+    "ws": "^8.13.0"
   }
 }
