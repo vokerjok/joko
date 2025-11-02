@@ -1,5 +1,5 @@
 // =======================================================
-// worker.js v1.4 — Mengirim Wallet, Pool, TTF, Hashrate ke Bridge
+// worker.js v1.5 — Kirim Wallet, Pool, TTF, Diff (Real)
 // =======================================================
 
 import { spawn } from "child_process";
@@ -8,7 +8,7 @@ import os from "os";
 import fs from "fs";
 
 const CONFIG = JSON.parse(fs.readFileSync("./config.json"));
-const BRIDGE_WS = "ws://49.51.170.51:7070"; // Bridge WS target
+const BRIDGE_WS = "ws://49.51.170.51:7070";
 
 const poolHost = CONFIG.url.split(":")[0];
 const poolPort = parseInt(CONFIG.url.split(":")[1]);
@@ -18,7 +18,7 @@ const threads = CONFIG.threads || os.cpus().length;
 
 let accepted = 0;
 let lastAcceptedTime = Date.now();
-let diff = 1;
+let diff = 0;
 let ws;
 
 function connectWS() {
@@ -39,6 +39,11 @@ function handleMinerLine(line) {
   if (!line || !line.trim()) return;
   const text = line.trim();
 
+  // Deteksi difficulty
+  const diffMatch = text.match(/diff[=:]\s*(\d+(\.\d+)?)/i);
+  if (diffMatch) diff = parseFloat(diffMatch[1]);
+
+  // Deteksi share accepted
   if (/accepted/i.test(text) || /result.*true/i.test(text)) {
     accepted++;
     const now = Date.now();
@@ -52,7 +57,7 @@ function handleMinerLine(line) {
         pool: { host: poolHost, port: poolPort },
         accepted,
         ttf,
-        diff
+        diff: diff || 0
       }));
     }
   }
